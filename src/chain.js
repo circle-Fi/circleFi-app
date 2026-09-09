@@ -146,8 +146,12 @@ export async function connectWallet() {
  */
 export async function wrongNetwork() {
   try {
-    const n = await getNetwork();
-    if (n?.error || !n?.networkPassphrase) return '';
+    // Same trap as isConnected: with the extension gone nothing ever answers.
+    const n = await Promise.race([
+      getNetwork(),
+      new Promise((r) => setTimeout(() => r(null), 2000)),
+    ]);
+    if (!n || n.error || !n.networkPassphrase) return '';
     return n.networkPassphrase === PASSPHRASE ? '' : (n.network || 'another network');
   } catch {
     return '';
