@@ -1,0 +1,98 @@
+:root{
+  --paper:#f4f2ee; --surface:#fbfaf8; --surface2:#e8e5df;
+  --ink:#1a1815; --ink2:#4d4841; --ink3:#7d766c; --rule:#d6d1c8;
+  --accent:#a8451a; --pass:#2f6552; --warn:#8a6a1e;
+  --sans:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#14120f; --surface:#1b1815; --surface2:#24201b;
+  --ink:#ece8e1; --ink2:#b0a89c; --ink3:#837b6f; --rule:#322d27;
+  --accent:#e08453; --pass:#6fb99b; --warn:#cfa445;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+.wrap{max-width:960px;margin:0 auto;padding:0 22px}
+.mono{font-family:var(--mono)}
+.sub{color:var(--ink3);font-size:14px;margin:6px 0 0}
+.tiny{font-size:11px}
+
+header{background:var(--surface);border-bottom:1px solid var(--rule);padding:22px 0}
+.mh{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
+.brand{text-decoration:none;color:inherit}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0;font-weight:600}
+h1{font-size:30px;letter-spacing:-.02em;margin:4px 0 0;font-weight:700}
+.wallet{text-align:right}
+.addr{font-size:12px;color:var(--ink3);margin:6px 0 0}
+
+main{padding:28px 0 0;min-height:52vh}
+h2{font-size:22px;margin:0;font-weight:650}
+h3{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin:32px 0 10px;font-weight:600}
+.pagehead{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;margin-bottom:20px}
+
+.btn{font-family:var(--sans);font-size:13.5px;font-weight:600;background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:3px;padding:9px 16px;cursor:pointer}
+.btn:hover:not(:disabled){background:var(--accent);border-color:var(--accent)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink2);border-color:var(--rule)}
+.btn.ghost:hover:not(:disabled){background:var(--surface);color:var(--ink)}
+.btn.back{margin-bottom:18px;padding:6px 12px;font-size:12.5px}
+.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+
+.msg{margin:16px 0 0;padding:11px 15px;font-size:14.5px;border-left:3px solid var(--accent);background:var(--surface)}
+.msg.ok{border-left-color:var(--pass)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:6px}
+.card{text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:15px 16px;display:grid;gap:2px}
+.card:hover{border-color:var(--accent)}
+.cardtop{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+.cardamt{font-size:21px;font-weight:650;margin:0;font-variant-numeric:tabular-nums}
+.cardfoot{display:flex;justify-content:space-between;gap:10px;margin-top:12px;padding-top:10px;border-top:1px solid var(--rule);font-size:12px;color:var(--ink3)}
+.empty{border:1px dashed var(--rule);border-radius:4px;padding:26px;text-align:center;display:grid;gap:14px;justify-items:center;margin-top:8px}
+.empty p{margin:0;color:var(--ink2)}
+
+.pill{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border:1px solid var(--rule);border-radius:2px;color:var(--ink3);white-space:nowrap}
+.pill.forming{color:var(--warn);border-color:currentColor}
+.pill.active{color:var(--accent);border-color:currentColor}
+.pill.complete,.pill.paid{color:var(--pass);border-color:currentColor}
+.pill.due{color:var(--warn);border-color:currentColor}
+.pill.bad{color:var(--accent);border-color:currentColor}
+.pill.you{color:var(--pass);border-color:currentColor}
+
+.headline{font-size:17px;margin:0;padding-left:14px;border-left:3px solid var(--rule);max-width:70ch}
+.headline.forming{border-left-color:var(--warn)}
+.headline.active{border-left-color:var(--accent)}
+.headline.complete{border-left-color:var(--pass)}
+.stats{display:flex;flex-wrap:wrap;gap:0 30px;margin:20px 0 0;padding:14px 0 0;border-top:1px solid var(--rule)}
+.stat dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink3)}
+.stat dd{margin:2px 0 0;font-size:20px;font-variant-numeric:tabular-nums}
+
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:8px}
+.field{display:grid;gap:5px}
+.field.wide{grid-column:1/-1}
+.field span{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink3)}
+.field input,.field select{font-family:inherit;font-size:15px;padding:9px 11px;border:1px solid var(--rule);border-radius:3px;background:var(--surface);color:var(--ink);width:100%}
+.field input.mono{font-family:var(--mono);font-size:12.5px}
+.field input:focus,.field select:focus{outline:2px solid var(--accent);outline-offset:-2px}
+.withunit{position:relative;display:flex;align-items:center}
+.withunit em{position:absolute;right:11px;font-style:normal;font-family:var(--mono);font-size:12px;color:var(--ink3)}
+.withunit input{padding-right:64px}
+.summary{margin-top:18px;font-size:15px;color:var(--ink2);max-width:70ch}
+
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:0 14px 8px 0;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:11px 14px 11px 0;border-bottom:1px solid var(--rule);vertical-align:baseline}
+tr.you td{background:var(--surface)}
+tr.next td:first-child{font-weight:700;color:var(--accent)}
+.contractline{margin-top:22px;word-break:break-all}
+
+footer{margin-top:48px;padding:22px 0 44px;border-top:1px solid var(--rule);color:var(--ink3);font-size:13.5px}
+footer p{max-width:78ch;margin:0 0 8px}
+
+@media (max-width:640px){
+  .mh{flex-direction:column;align-items:flex-start}
+  .wallet{text-align:left}
+  .stats{gap:0 20px}
+  .stat dd{font-size:17px}
+}

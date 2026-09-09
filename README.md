@@ -1,54 +1,56 @@
-# CircleFi App
+# CircleFi - the app
 
-React-based web application for CircleFi rotating savings circles on Stellar testnet.
+A rotating savings circle you can actually run: open one, join one, pay your
+round, take your turn. Everything happens on Stellar. There is no CircleFi
+server - this is a static page that talks to a public Soroban RPC node.
 
-## Features
+## What it does
 
-- **Circle Creation**: Create new savings groups with customizable parameters
-- **Member Management**: Invite members by wallet address or contact
-- **Contribution Tracking**: Monitor contributions and payment history
-- **Payout Calendar**: View upcoming payouts and rotation schedule
-- **Trust Score Display**: See member trust scores based on payment history
-- **Bid Management**: Place bids for payout priority (bid-based circles)
-- **Responsive Design**: Works on desktop and mobile devices
+- **Browse** every circle the factory has opened, with live state read straight
+  from the ledger. No wallet needed to look.
+- **Start a circle**: pick the token, the amount per round, the number of
+  members and how long a round lasts. The page states the deal in words before
+  you sign anything.
+- **Join**: locks one round's worth as a security deposit.
+- **Contribute** each round, **top up** a deposit that has been drawn down,
+  and **settle** a round once everyone has paid or the window has closed.
+- **Withdraw** your deposit when the circle completes.
 
-## Installation
+If a member misses a round, their deposit covers it, so whoever's turn it is
+still gets paid in full. When a deposit runs out the pot comes up short and the
+app says so plainly rather than hiding it.
 
-```bash
+## Running it
+
+```sh
 npm install
+npm run dev
 ```
 
-## Running
+You need [Freighter](https://freighter.app) and a funded testnet account for
+anything that writes. Reads work without either.
 
-```bash
-npm start
-```
-
-The app runs on `http://localhost:3000`.
-
-## Building
-
-```bash
-npm build
-```
-
-## Configuration
-
-Create a `.env` file in the root directory:
+## Where it points
 
 ```
-REACT_APP_STELLAR_NETWORK=testnet
-REACT_APP_SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
-REACT_APP_CONTRACT_ID=<your-contract-id>
+factory   CCJRXTYIEFE6Z7DGTAKRGBLOGYBZNOONHI7FWZUDXEKZ7LGEGZNXKG3M
+network   Test SDF Network ; September 2015
+rpc       https://soroban-testnet.stellar.org
 ```
 
-## Architecture
+Override the factory at build time with `VITE_FACTORY_ID`.
 
-- **Context API** for state management
-- **CircleContext** handles all circle-related operations
-- **Components** are modular and reusable
-- **Responsive CSS** for mobile-first design
+The contracts live in
+[circle-Fi/circleFi-contract](https://github.com/circle-Fi/circleFi-contract).
 
-## License
+## Layout
 
-MIT
+| file | what it holds |
+| --- | --- |
+| `src/chain.js` | every call to Stellar; contract errors turned into sentences |
+| `src/format.js` | token amounts and durations, in integers - no float drift |
+| `src/App.jsx` | the three screens and the wallet |
+
+## Licence
+
+Apache-2.0
