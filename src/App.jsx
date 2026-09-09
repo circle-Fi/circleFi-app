@@ -438,7 +438,7 @@ function Circle({ id, wallet, onConnect }) {
       <Back />
       <div className="detail">
         <Ring size={228} weight={10} seats={seats}>
-          <span className="k">{status === 'forming' ? 'Pot each round' : 'This round'}</span>
+          <span className="k">{status === 'active' ? 'This round' : 'Pot each round'}</span>
           <span className="v">{money(pot)}</span>
         </Ring>
 
