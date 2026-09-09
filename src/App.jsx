@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   FACTORY, NATIVE_SAC, circle as circleApi, connectWallet, explain, factory,
   tokenBalance, tokenMeta, walletAvailable,
@@ -37,7 +37,54 @@ function useWallet() {
   return { wallet, available, error, connect };
 }
 
-/* ---------- a button that runs a transaction and reports honestly ---------- */
+/* ---------- the ring ----------
+   A circle drawn as a circle: one arc per seat, in join order, clockwise from
+   the top. It is the whole product in one glance - how many seats, who has
+   paid, whose turn it is - so it carries real information, not decoration. */
+const polar = (c, r, deg) => {
+  const a = ((deg - 90) * Math.PI) / 180;
+  return [c + r * Math.cos(a), c + r * Math.sin(a)];
+};
+
+function arc(c, r, from, to) {
+  const [x1, y1] = polar(c, r, from);
+  const [x2, y2] = polar(c, r, to);
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x2} ${y2}`;
+}
+
+function Ring({ seats, size = 220, weight = 9, children }) {
+  const n = Math.max(seats.length, 1);
+  const c = size / 2;
+  const r = c - weight;
+  const gap = n > 12 ? 3 : n > 6 ? 5 : 7;
+  const step = 360 / n;
+
+  return (
+    <div className="ringwrap" style={{ width: size, height: size }}>
+      <svg className="ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+        <circle className="track" cx={c} cy={c} r={r} fill="none" strokeWidth={1} opacity={0.5} />
+        {seats.map((seat, i) => (
+          <path
+            key={i}
+            className={seat.kind}
+            d={arc(c, r, i * step + gap / 2, (i + 1) * step - gap / 2)}
+            fill="none"
+            strokeWidth={seat.strong ? weight + 4 : weight}
+            strokeLinecap="round"
+            opacity={seat.kind === 'open' ? 0.55 : 1}
+          />
+        ))}
+      </svg>
+      <div className="ringmid">{children}</div>
+    </div>
+  );
+}
+
+/** Seats for a circle that is still filling up. */
+const formingSeats = (taken, capacity) =>
+  Array.from({ length: capacity }, (_, i) => ({ kind: i < taken ? 'seat' : 'open' }));
+
+/* ---------- small pieces ---------- */
 function TxButton({ label, busyLabel = 'Waiting for your wallet...', run, onDone, ghost, disabled }) {
   const [busy, setBusy] = useState(false);
   return (
@@ -62,6 +109,10 @@ function Msg({ error, ok }) {
   return <p className={error ? 'msg' : 'msg ok'}>{error || ok}</p>;
 }
 
+const Back = () => (
+  <a className="back" href="#/" onClick={() => go('#/')}>&larr; All circles</a>
+);
+
 /* ---------- browse ---------- */
 function Browse({ wallet }) {
   const [rows, setRows] = useState(null);
@@ -84,22 +135,57 @@ function Browse({ wallet }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const open = rows?.filter((r) => statusOf(r.st?.status) === 'forming').length ?? 0;
+
   return (
     <>
+      <section className="hero">
+        <div>
+          <h1 className="page">Save together,<br />and take your turn.</h1>
+          <p className="lede">
+            A group agrees on an amount and a rhythm. Everyone pays in each round; one member
+            takes the whole pot. Everyone gets exactly one turn - and a deposit covers anyone
+            who misses, so whoever&rsquo;s turn it is gets paid in full.
+          </p>
+          <div className="herocta">
+            <button className="btn" onClick={() => go('#/new')}>Start a circle</button>
+            <a className="btn ghost" href="https://github.com/circle-Fi/circleFi-contract"
+               target="_blank" rel="noreferrer">Read the contract</a>
+          </div>
+          <dl className="rail">
+            <div><dt>On chain</dt><dd>Stellar testnet</dd></div>
+            <div><dt>Custody</dt><dd>None - the contract holds it</dd></div>
+            <div><dt>To look</dt><dd>No wallet, no fee</dd></div>
+          </dl>
+        </div>
+        <div className="heroart">
+          <Ring size={216} weight={10} seats={[
+            { kind: 'paid' }, { kind: 'paid' }, { kind: 'seat', strong: true },
+            { kind: 'due' }, { kind: 'seat' }, { kind: 'open' },
+          ]}>
+            <span className="k">Round 3 of 6</span>
+            <span className="v">Your turn</span>
+          </Ring>
+        </div>
+      </section>
+
       <div className="pagehead">
         <div>
-          <h2>Circles</h2>
-          <p className="sub">Anyone can open one. Anyone can join one that is still forming.</p>
+          <h2>Open circles</h2>
+          <p className="sub">
+            {rows === null ? 'Reading the chain...'
+              : `${rows.length} opened through the factory${open ? `, ${open} still taking members` : ''}.`}
+          </p>
         </div>
-        <button className="btn" onClick={() => go('#/new')}>Start a circle</button>
+        <button className="btn ghost small" onClick={load}>Refresh</button>
       </div>
 
       <Msg error={error} />
 
-      {rows === null && <p className="sub">Reading the chain...</p>}
       {rows?.length === 0 && !error && (
         <div className="empty">
-          <p><strong>No circles yet.</strong> Be the first - starting one takes one transaction.</p>
+          <p><strong>No circles yet.</strong> Starting one takes a single transaction, and
+            the terms are fixed the moment it exists.</p>
           <button className="btn" onClick={() => go('#/new')}>Start the first circle</button>
         </div>
       )}
@@ -107,19 +193,22 @@ function Browse({ wallet }) {
       <div className="grid">
         {rows?.map((r) => {
           const status = statusOf(r.st?.status);
-          const seats = r.st ? r.st.members.length : 0;
+          const taken = r.st ? r.st.members.length : 0;
+          const capacity = Number(r.capacity);
           const mine = wallet && r.st?.members?.some((m) => m === wallet);
           return (
             <button key={r.address} className="card" onClick={() => go(`#/c/${r.address}`)}>
-              <div className="cardtop">
-                <span className={`pill ${status}`}>{status}</span>
-                {mine && <span className="pill you">you are in</span>}
-              </div>
-              <p className="cardamt">{amount(r.contribution, r.meta.decimals, r.meta.symbol)}</p>
-              <p className="sub">every {duration(r.round_seconds)}</p>
-              <div className="cardfoot">
-                <span>{seats} / {r.capacity} seats</span>
-                <span className="mono">{short(r.address)}</span>
+              <Ring size={70} weight={5} seats={formingSeats(taken, capacity)}>
+                <span className="v sm">{taken}</span>
+              </Ring>
+              <div>
+                <p className="cardamt">{amount(r.contribution, r.meta.decimals, r.meta.symbol)}</p>
+                <p className="sub">every {duration(r.round_seconds)}</p>
+                <div className="cardfoot">
+                  <span className={`pill ${status}`}>{status}</span>
+                  {mine && <span className="pill you">you are in</span>}
+                  <span>{taken} / {capacity} seats</span>
+                </div>
               </div>
             </button>
           );
@@ -134,8 +223,8 @@ function Create({ wallet, onConnect }) {
   const [token, setToken] = useState(NATIVE_SAC);
   const [meta, setMeta] = useState({ decimals: 7, symbol: 'XLM' });
   const [contribution, setContribution] = useState('1');
-  const [capacity, setCapacity] = useState('3');
-  const [period, setPeriod] = useState('300');
+  const [capacity, setCapacity] = useState('6');
+  const [period, setPeriod] = useState('604800');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -152,80 +241,93 @@ function Create({ wallet, onConnect }) {
       : !Number.isInteger(cap) || cap < 3 || cap > 24 ? 'A circle needs between 3 and 24 members.'
       : !Number.isInteger(secs) || secs <= 0 ? 'Pick a round length.'
       : '';
+  const money = (v) => amount(v, meta.decimals, meta.symbol);
+  const seats = problem ? formingSeats(0, 6) : formingSeats(1, cap);
 
   return (
     <>
+      <Back />
       <div className="pagehead">
         <div>
           <h2>Start a circle</h2>
-          <p className="sub">
-            You set the terms; they are fixed once the circle exists. Everyone can read them
-            before putting in a unit.
-          </p>
+          <p className="sub">You set the terms. They are fixed once it exists, and anyone
+            can read them before putting in a unit.</p>
         </div>
-        <button className="btn ghost" onClick={() => go('#/')}>Back</button>
       </div>
 
-      <div className="form">
-        <label className="field">
-          <span>Contribution each round</span>
-          <div className="withunit">
-            <input value={contribution} onChange={(e) => setContribution(e.target.value)} inputMode="decimal" />
-            <em>{meta.symbol}</em>
+      <div className="build">
+        <div>
+          <div className="form">
+            <label className="field">
+              <span>Contribution each round</span>
+              <div className="withunit">
+                <input value={contribution} inputMode="decimal"
+                  onChange={(e) => setContribution(e.target.value)} />
+                <em>{meta.symbol}</em>
+              </div>
+            </label>
+
+            <label className="field">
+              <span>Members</span>
+              <input value={capacity} inputMode="numeric"
+                onChange={(e) => setCapacity(e.target.value)} />
+            </label>
+
+            <label className="field">
+              <span>Round length</span>
+              <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+                <option value="300">5 minutes (for testing)</option>
+                <option value="3600">1 hour</option>
+                <option value="86400">1 day</option>
+                <option value="604800">1 week</option>
+                <option value="2592000">30 days</option>
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Token</span>
+              <input className="mono" value={token} spellCheck="false"
+                onChange={(e) => setToken(e.target.value.trim())} />
+            </label>
           </div>
-        </label>
 
-        <label className="field">
-          <span>Members</span>
-          <input value={capacity} onChange={(e) => setCapacity(e.target.value)} inputMode="numeric" />
-        </label>
+          <Msg error={error} />
 
-        <label className="field">
-          <span>Round length</span>
-          <select value={period} onChange={(e) => setPeriod(e.target.value)}>
-            <option value="300">5 minutes (for testing)</option>
-            <option value="3600">1 hour</option>
-            <option value="86400">1 day</option>
-            <option value="604800">1 week</option>
-            <option value="2592000">30 days</option>
-          </select>
-        </label>
+          <div className="actions" style={{ marginTop: 24 }}>
+            {wallet ? (
+              <TxButton
+                label="Create circle"
+                disabled={!!problem}
+                run={() => factory.create(wallet, {
+                  token, contribution: units, roundSeconds: secs, capacity: cap,
+                })}
+                onDone={(err, res) => {
+                  if (err) return setError(err);
+                  if (res?.value) go(`#/c/${res.value}`); else go('#/');
+                }}
+              />
+            ) : (
+              <button className="btn" onClick={onConnect}>Connect a wallet to create</button>
+            )}
+            <button className="btn ghost" onClick={() => go('#/')}>Cancel</button>
+          </div>
+        </div>
 
-        <label className="field wide">
-          <span>Token</span>
-          <input className="mono" value={token} onChange={(e) => setToken(e.target.value.trim())} spellCheck="false" />
-        </label>
-      </div>
-
-      <p className="sub summary">
-        {problem ? problem : (
-          <>
-            {cap} members put in {amount(units, meta.decimals, meta.symbol)} every {duration(secs)}.
-            Each round one member takes{' '}
-            <strong>{amount(units * BigInt(cap), meta.decimals, meta.symbol)}</strong>.
-            Joining locks {amount(units, meta.decimals, meta.symbol)} as a deposit, returned at the end.
-          </>
-        )}
-      </p>
-
-      <Msg error={error} />
-
-      <div className="actions">
-        {wallet ? (
-          <TxButton
-            label="Create circle"
-            disabled={!!problem}
-            run={() => factory.create(wallet, {
-              token, contribution: units, roundSeconds: secs, capacity: cap,
-            })}
-            onDone={(err, res) => {
-              if (err) return setError(err);
-              if (res?.value) go(`#/c/${res.value}`); else go('#/');
-            }}
-          />
-        ) : (
-          <button className="btn" onClick={onConnect}>Connect a wallet to create</button>
-        )}
+        <aside className="preview">
+          <Ring size={190} weight={8} seats={seats}>
+            <span className="k">Pot each round</span>
+            <span className="v">{problem ? '--' : money(units * BigInt(cap))}</span>
+          </Ring>
+          <p className="deal">
+            {problem || (
+              <>
+                <strong>{cap} members</strong> put in <strong>{money(units)}</strong> every{' '}
+                {duration(secs)}. Each round one of them takes the pot. Joining locks{' '}
+                {money(units)} as a deposit, returned when the circle completes.
+              </>
+            )}
+          </p>
+        </aside>
       </div>
     </>
   );
@@ -279,18 +381,25 @@ function Circle({ id, wallet, onConnect }) {
   const me = members.find((m) => m.address === wallet);
   const everyonePaid = members.length > 0 && members.every((m) => m.paid);
   const windowClosed = Number(st.round_ends_at) <= Math.floor(Date.now() / 1000);
+  const recipient = status === 'active' ? st.members[round - 1] : null;
+
+  const seats = status === 'forming'
+    ? formingSeats(members.length, capacity)
+    : members.map((m, i) => ({
+      kind: status === 'complete' ? 'paid' : m.paid ? 'paid' : 'due',
+      strong: i === round - 1 && status === 'active',
+    }));
 
   let headline;
   if (status === 'forming') {
     const left = capacity - members.length;
-    headline = `Forming - ${members.length} of ${capacity} seats taken. ${left} more and round 1 starts.`;
+    headline = `${left} more ${left === 1 ? 'member' : 'members'} and round 1 begins.`;
   } else if (status === 'complete') {
-    headline = 'Complete - everyone has paid in and taken their turn. Deposits can be withdrawn.';
+    headline = 'Every turn has been taken. Deposits are free to withdraw.';
   } else {
-    const who = st.members[round - 1];
     const unpaid = members.filter((m) => !m.paid).length;
-    headline = `Round ${round} of ${capacity} - ${money(pot)} goes to ${who === wallet ? 'you' : short(who)}. ` +
-      (unpaid ? `${unpaid} still to pay, ${remaining(st.round_ends_at)}.` : 'Everyone has paid; the round can be settled.');
+    headline = `${money(pot)} goes to ${recipient === wallet ? 'you' : short(recipient)} this round.`;
+    if (unpaid) headline += ` ${unpaid} still to pay.`;
   }
 
   const actions = [];
@@ -315,7 +424,7 @@ function Circle({ id, wallet, onConnect }) {
   }
 
   let note = '';
-  if (wallet && status === 'forming' && me) note = `You are in at position ${members.indexOf(me) + 1} - that is the round you get paid.`;
+  if (wallet && status === 'forming' && me) note = `You are in at seat ${members.indexOf(me) + 1} - that is the round you get paid.`;
   else if (wallet && status === 'active' && !me) note = 'This circle is running and closed to new members.';
   else if (wallet && status === 'active' && me?.paid && !everyonePaid && !windowClosed)
     note = `You are paid up for round ${round}. Waiting on the others - ${remaining(st.round_ends_at)}.`;
@@ -327,43 +436,71 @@ function Circle({ id, wallet, onConnect }) {
   return (
     <>
       <Back />
-      <p className={`headline ${status}`}>{headline}</p>
+      <div className="detail">
+        <Ring size={228} weight={10} seats={seats}>
+          <span className="k">{status === 'forming' ? 'Pot each round' : 'This round'}</span>
+          <span className="v">{money(pot)}</span>
+        </Ring>
 
-      <dl className="stats">
-        {[['Contribution', money(cfg.contribution)], ['Pot', money(pot)],
-          ['Members', `${members.length} / ${capacity}`], ['Round', duration(cfg.round_seconds)]]
-          .map(([k, v]) => <div className="stat" key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
-      </dl>
+        <div>
+          <div className="cardfoot" style={{ marginTop: 0, marginBottom: 10 }}>
+            <span className={`pill ${status}`}>{status}</span>
+            {status === 'active' && <span className="pill flat">round {round} of {capacity}</span>}
+            {status === 'active' && <span className="pill flat">{remaining(st.round_ends_at)}</span>}
+          </div>
+          <p className="headline">{headline}</p>
 
-      <Msg error={error} ok={ok} />
+          <dl className="terms">
+            <div><dt>Contribution</dt><dd>{money(cfg.contribution)}</dd></div>
+            <div><dt>Every</dt><dd>{duration(cfg.round_seconds)}</dd></div>
+            <div><dt>Members</dt><dd>{members.length} / {capacity}</dd></div>
+            <div><dt>Deposit</dt><dd>{money(cfg.contribution)}</dd></div>
+          </dl>
 
-      <h3>Your move</h3>
-      <div className="actions">{actions.length ? actions : <p className="sub">Nothing for you to do right now.</p>}</div>
-      {note && <p className="sub">{note}</p>}
+          <h3 style={{ marginTop: 28 }}>Your move</h3>
+          <div className="actions">
+            {actions.length ? actions : <p className="sub" style={{ margin: 0 }}>Nothing for you to do right now.</p>}
+          </div>
+          {note && <p className="note">{note}</p>}
+          <Msg error={error} ok={ok} />
+        </div>
+      </div>
 
       <h3>The rotation</h3>
-      <p className="sub">Payout order is join order, fixed when the circle filled.</p>
+      <p className="sub" style={{ marginTop: -4, marginBottom: 14 }}>
+        Payout order is join order, fixed the moment the circle filled.
+      </p>
       <div className="scroll">
         <table>
-          <thead><tr><th>Round</th><th>Member</th><th>This round</th><th>Deposit</th><th>Missed</th><th>Paid out</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Seat</th><th>Member</th><th>This round</th>
+              <th>Deposit</th><th>Missed</th><th>Paid out</th>
+            </tr>
+          </thead>
           <tbody>
-            {members.length === 0 && <tr><td colSpan="6" className="sub">Nobody has joined yet.</td></tr>}
+            {members.length === 0 && (
+              <tr><td colSpan="6" className="sub">Nobody has joined yet.</td></tr>
+            )}
             {members.map((m, i) => (
-              <tr key={m.address} className={`${m.address === wallet ? 'you' : ''} ${status === 'active' && i === round - 1 ? 'next' : ''}`}>
-                <td>{i + 1}</td>
-                <td className="mono">{short(m.address)}{m.address === wallet && <span className="pill you"> you</span>}</td>
-                <td>{status !== 'active' ? <span className="pill">-</span>
+              <tr key={m.address}
+                className={`${m.address === wallet ? 'you' : ''} ${i === round - 1 && status === 'active' ? 'next' : ''}`}>
+                <td><span className="seatno">{i + 1}</span></td>
+                <td className="mono">
+                  {short(m.address)}{m.address === wallet && <span className="pill you" style={{ marginLeft: 8 }}>you</span>}
+                </td>
+                <td>{status !== 'active' ? <span className="dim">&mdash;</span>
                   : m.paid ? <span className="pill paid">paid</span> : <span className="pill due">due</span>}</td>
                 <td>{m.rec ? (m.rec.delinquent ? <span className="pill bad">exhausted</span> : money(m.rec.deposit)) : '-'}</td>
                 <td>{m.rec ? Number(m.rec.defaults) : 0}</td>
-                <td>{m.rec?.received ? <span className="pill paid">yes</span> : <span className="pill">not yet</span>}</td>
+                <td>{m.rec?.received ? <span className="pill paid">yes</span> : <span className="dim">not yet</span>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <p className="sub contractline">
+      <p className="contractline">
         Circle contract <span className="mono">{id}</span> &middot;{' '}
         <a href={`https://stellar.expert/explorer/testnet/contract/${id}`} target="_blank" rel="noreferrer">
           view on stellar.expert
@@ -372,8 +509,6 @@ function Circle({ id, wallet, onConnect }) {
     </>
   );
 }
-
-const Back = () => <button className="btn ghost back" onClick={() => go('#/')}>All circles</button>;
 
 /* ---------- shell ---------- */
 export default function App() {
@@ -386,12 +521,12 @@ export default function App() {
         <div className="wrap mh">
           <a className="brand" href="#/">
             <p className="eyebrow">Stellar &middot; Soroban &middot; testnet</p>
-            <h1>CircleFi</h1>
+            <p className="wordmark">Circle<b>Fi</b></p>
           </a>
           <div className="wallet">
             {wallet
-              ? <><span className="pill you">connected</span><p className="mono addr">{short(wallet)}</p></>
-              : <button className="btn" onClick={connect}>
+              ? <span className="chip"><span className="dot" />{short(wallet)}</span>
+              : <button className="btn small" onClick={connect}>
                   {available === false ? 'Install Freighter' : 'Connect wallet'}
                 </button>}
           </div>
@@ -407,10 +542,10 @@ export default function App() {
 
       <footer className="wrap">
         <p>
-          Reads are simulated against a public RPC node - no wallet, no account, no fee. Writes are
-          transactions your own wallet signs. No server, no custody: the{' '}
-          <a href="https://github.com/circle-Fi/circleFi-contract">contract</a> holds the funds and
-          the rules, and anyone can settle a round.
+          Reads are simulated against a public RPC node - no wallet, no account, no fee.
+          Writes are transactions your own wallet signs. No server and no custody anywhere:
+          the <a href="https://github.com/circle-Fi/circleFi-contract">contract</a> holds the
+          funds and the rules, and anyone may settle a round.
         </p>
         <p className="mono tiny">factory {FACTORY}</p>
       </footer>
