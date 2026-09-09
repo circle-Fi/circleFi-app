@@ -4,6 +4,8 @@ A rotating savings circle you can actually run: open one, join one, pay your
 round, take your turn. Everything happens on Stellar. There is no CircleFi
 server - this is a static page that talks to a public Soroban RPC node.
 
+**Live:** https://circle-fi.github.io/circleFi-app/ - mirror: https://circle-fi-app-8dgi.vercel.app/
+
 ## What it does
 
 - **Browse** every circle the factory has opened, with live state read straight
