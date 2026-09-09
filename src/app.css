@@ -193,3 +193,17 @@ footer p{max-width:74ch;margin:0 0 10px}
   .rail{gap:18px}
   .card{grid-template-columns:1fr}
 }
+
+/* ---- .wrap sets padding/margin, so anything sharing it needs the pair ---- */
+.wrap.mh{padding:16px 24px}
+main.wrap{padding-top:34px}
+footer.wrap{margin-top:64px;padding:26px 24px 56px}
+
+/* Centre the ring label on the ring, not on its static position. */
+.ringmid{inset:0;display:grid;align-content:center;justify-items:center;padding:0 15%}
+
+@media (max-width:520px){
+  .wrap.mh{padding:14px 18px}
+  main.wrap{padding-top:26px}
+  footer.wrap{padding:24px 18px 48px}
+}
