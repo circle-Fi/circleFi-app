@@ -1,8 +1,12 @@
 # CircleFi - the app
 
 A rotating savings circle you can actually run: open one, join one, pay your
-round, take your turn. Everything happens on Stellar. There is no CircleFi
-server - this is a static page that talks to a public Soroban RPC node.
+round, take your turn. Everything happens on Stellar.
+
+There is no CircleFi server. The app is a React build that runs entirely in the
+browser and talks straight to a public Soroban RPC node and to your wallet - so
+nobody holds your money, there is nothing to go down on the day your payout is
+due, and there is no database of members to leak. The contract is the backend.
 
 **Live:** https://circle-fi.github.io/circleFi-app/ - mirror: https://circle-fi-app-8dgi.vercel.app/
 
