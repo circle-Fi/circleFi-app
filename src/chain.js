@@ -7,7 +7,9 @@ import {
   Account, Address, BASE_FEE, Contract, Networks, TransactionBuilder,
   nativeToScVal, rpc, scValToNative,
 } from '@stellar/stellar-sdk';
-import { isConnected, requestAccess, getAddress, signTransaction } from '@stellar/freighter-api';
+import {
+  getAddress, getNetwork, isConnected, requestAccess, signTransaction,
+} from '@stellar/freighter-api';
 
 export const RPC_URL = 'https://soroban-testnet.stellar.org';
 export const PASSPHRASE = Networks.TESTNET;
@@ -78,6 +80,8 @@ export async function read(contractId, method, args = []) {
 // ---- writes ----
 export async function invoke(contractId, method, args, wallet) {
   if (!wallet) throw new ChainError('Connect a wallet first.');
+  const wrong = await wrongNetwork();
+  if (wrong) throw new ChainError(`Freighter is set to ${wrong}. Switch it to Test Net, then try again.`);
   const account = await server.getAccount(wallet);
   const built = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: PASSPHRASE })
     .addOperation(new Contract(contractId).call(method, ...args))
@@ -129,7 +133,25 @@ export async function connectWallet() {
   }
   const res = await requestAccess();
   if (res.error) throw new ChainError(String(res.error));
+  const wrong = await wrongNetwork();
+  if (wrong) throw new ChainError(`Freighter is set to ${wrong}. Switch it to Test Net, then connect again.`);
   return res.address || (await getAddress()).address;
+}
+
+/**
+ * Freighter opens on the public network out of the box, and a signature made
+ * there is worthless here - the failure it produces names neither the cause nor
+ * the cure. So ask the extension which network it is on before anyone signs.
+ * Returns the offending network's name, or an empty string when all is well.
+ */
+export async function wrongNetwork() {
+  try {
+    const n = await getNetwork();
+    if (n?.error || !n?.networkPassphrase) return '';
+    return n.networkPassphrase === PASSPHRASE ? '' : (n.network || 'another network');
+  } catch {
+    return '';
+  }
 }
 
 // ---- domain calls ----
