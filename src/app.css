@@ -1,9 +1,9 @@
 :root{
   --paper:#faf8f5; --raise:#ffffff; --sunk:#f2eee8;
-  --ink:#16130f; --ink2:#57504a; --ink3:#8a8177;
+  --ink:#16130f; --ink2:#57504a; --ink3:#685f55;
   --line:#e7e1d9; --line2:#d5cdc2;
   --accent:#b4441c; --accent2:#9a3a17;
-  --pass:#2f6b52; --warn:#a07214;
+  --pass:#2f6b52; --warn:#865e10;
   --ui:'Inter',system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
   --display:'Instrument Serif',Georgia,'Times New Roman',serif;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -12,7 +12,7 @@
 }
 @media (prefers-color-scheme:dark){:root{
   --paper:#100e0c; --raise:#191614; --sunk:#141110;
-  --ink:#f2ede6; --ink2:#a9a096; --ink3:#7a7269;
+  --ink:#f2ede6; --ink2:#a9a096; --ink3:#9c948a;
   --line:#2b2622; --line2:#3a342e;
   --accent:#e8865a; --accent2:#f0a180;
   --pass:#6fbe99; --warn:#d9a441;
@@ -136,6 +136,10 @@ h3{font-size:11px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;
 /* ---- rotation ---- */
 .scroll{overflow-x:auto;margin:0 -4px;padding:0 4px}
 table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+.seat-cell{
+  font-weight:inherit;
+  text-align:inherit;
+}
 th{
   text-align:left;font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;
   color:var(--ink3);padding:0 16px 10px 0;border-bottom:1px solid var(--line);white-space:nowrap;
