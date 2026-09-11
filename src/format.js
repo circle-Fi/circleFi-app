@@ -19,20 +19,40 @@ export function toUnits(text, decimals) {
   return BigInt(whole || '0') * 10n ** BigInt(decimals) + BigInt((frac || '0').padEnd(decimals, '0') || '0');
 }
 
-export function duration(seconds) {
+export function duration(seconds, t) {
   const s = Number(seconds);
-  if (s % 86400 === 0 && s >= 86400) { const d = s / 86400; return d === 1 ? 'a day' : `${d} days`; }
-  if (s % 3600 === 0 && s >= 3600) { const h = s / 3600; return h === 1 ? 'an hour' : `${h} hours`; }
-  if (s % 60 === 0 && s >= 60) return `${s / 60} min`;
-  return `${s}s`;
+  if (!t) {
+    if (s % 86400 === 0 && s >= 86400) { const d = s / 86400; return d === 1 ? 'a day' : `${d} days`; }
+    if (s % 3600 === 0 && s >= 3600) { const h = s / 3600; return h === 1 ? 'an hour' : `${h} hours`; }
+    if (s % 60 === 0 && s >= 60) return `${s / 60} min`;
+    return `${s}s`;
+  }
+  if (s % 86400 === 0 && s >= 86400) {
+    const d = s / 86400;
+    return d === 1 ? t('duration.a_day') : t('duration.days', { count: d });
+  }
+  if (s % 3600 === 0 && s >= 3600) {
+    const h = s / 3600;
+    return h === 1 ? t('duration.an_hour') : t('duration.hours', { count: h });
+  }
+  if (s % 60 === 0 && s >= 60) {
+    return t('duration.min', { count: s / 60 });
+  }
+  return t('duration.sec', { count: s });
 }
 
-export function remaining(endsAt) {
+export function remaining(endsAt, t) {
   const left = Number(endsAt) - Math.floor(Date.now() / 1000);
-  if (left <= 0) return 'the window has closed';
-  if (left < 3600) return `${Math.ceil(left / 60)} min left`;
-  if (left < 86400) return `${Math.floor(left / 3600)} h left`;
-  return `${Math.floor(left / 86400)} d left`;
+  if (!t) {
+    if (left <= 0) return 'the window has closed';
+    if (left < 3600) return `${Math.ceil(left / 60)} min left`;
+    if (left < 86400) return `${Math.floor(left / 3600)} h left`;
+    return `${Math.floor(left / 86400)} d left`;
+  }
+  if (left <= 0) return t('remaining.closed');
+  if (left < 3600) return t('remaining.min_left', { count: Math.ceil(left / 60) });
+  if (left < 86400) return t('remaining.h_left', { count: Math.floor(left / 3600) });
+  return t('remaining.d_left', { count: Math.floor(left / 86400) });
 }
 
 export const STATUS = ['forming', 'active', 'complete'];
