@@ -52,7 +52,7 @@ function arc(c, r, from, to) {
   return `M ${x1} ${y1} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x2} ${y2}`;
 }
 
-function Ring({ seats, size = 220, weight = 9, children }) {
+function Ring({ seats, size = 220, weight = 9, label, children }) {
   const n = Math.max(seats.length, 1);
   const c = size / 2;
   const r = c - weight;
@@ -60,8 +60,13 @@ function Ring({ seats, size = 220, weight = 9, children }) {
   const step = 360 / n;
 
   return (
-    <div className="ringwrap" style={{ width: size, height: size }}>
-      <svg className="ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+    <div
+      className="ringwrap"
+      style={{ width: size, height: size }}
+      role={label ? 'img' : undefined}
+      aria-label={label}
+    >
+      <svg className="ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" focusable="false">
         <circle className="track" cx={c} cy={c} r={r} fill="none" strokeWidth={1} opacity={0.5} />
         {seats.map((seat, i) => (
           <path
@@ -75,7 +80,7 @@ function Ring({ seats, size = 220, weight = 9, children }) {
           />
         ))}
       </svg>
-      <div className="ringmid">{children}</div>
+      <div className="ringmid" aria-hidden={label ? 'true' : undefined}>{children}</div>
     </div>
   );
 }
@@ -159,10 +164,15 @@ function Browse({ wallet }) {
           </dl>
         </div>
         <div className="heroart">
-          <Ring size={216} weight={10} seats={[
-            { kind: 'paid' }, { kind: 'paid' }, { kind: 'seat', strong: true },
-            { kind: 'due' }, { kind: 'seat' }, { kind: 'open' },
-          ]}>
+          <Ring
+            size={216}
+            weight={10}
+            label="Sample savings ring: Round 3 of 6, your turn"
+            seats={[
+              { kind: 'paid' }, { kind: 'paid' }, { kind: 'seat', strong: true },
+              { kind: 'due' }, { kind: 'seat' }, { kind: 'open' },
+            ]}
+          >
             <span className="k">Round 3 of 6</span>
             <span className="v">Your turn</span>
           </Ring>
@@ -197,8 +207,18 @@ function Browse({ wallet }) {
           const capacity = Number(r.capacity);
           const mine = wallet && r.st?.members?.some((m) => m === wallet);
           return (
-            <button key={r.address} className="card" onClick={() => go(`#/c/${r.address}`)}>
-              <Ring size={70} weight={5} seats={formingSeats(taken, capacity)}>
+            <button
+              key={r.address}
+              className="card"
+              onClick={() => go(`#/c/${r.address}`)}
+              aria-label={`Circle ${short(r.address)}, ${amount(r.contribution, r.meta.decimals, r.meta.symbol)} every ${duration(r.round_seconds)}, ${status}, ${taken} of ${capacity} seats filled`}
+            >
+              <Ring
+                size={70}
+                weight={5}
+                label={`${taken} of ${capacity} seats filled`}
+                seats={formingSeats(taken, capacity)}
+              >
                 <span className="v sm">{taken}</span>
               </Ring>
               <div>
@@ -314,7 +334,12 @@ function Create({ wallet, onConnect }) {
         </div>
 
         <aside className="preview">
-          <Ring size={190} weight={8} seats={seats}>
+          <Ring
+            size={190}
+            weight={8}
+            label={problem ? 'Circle configuration preview' : `Pot each round: ${money(units * BigInt(cap))}, 1 of ${cap} seats filled`}
+            seats={seats}
+          >
             <span className="k">Pot each round</span>
             <span className="v">{problem ? '--' : money(units * BigInt(cap))}</span>
           </Ring>
@@ -437,7 +462,18 @@ function Circle({ id, wallet, onConnect }) {
     <>
       <Back />
       <div className="detail">
-        <Ring size={228} weight={10} seats={seats}>
+        <Ring
+          size={228}
+          weight={10}
+          label={
+            status === 'forming'
+              ? `Circle forming: ${members.length} of ${capacity} seats filled, pot ${money(pot)}`
+              : status === 'complete'
+              ? `Circle complete: pot ${money(pot)}, all turns taken`
+              : `Circle round ${round} of ${capacity}: pot ${money(pot)}, ${members.filter((m) => m.paid).length} of ${capacity} paid`
+          }
+          seats={seats}
+        >
           <span className="k">{status === 'active' ? 'This round' : 'Pot each round'}</span>
           <span className="v">{money(pot)}</span>
         </Ring>
@@ -470,32 +506,71 @@ function Circle({ id, wallet, onConnect }) {
       <p className="sub" style={{ marginTop: -4, marginBottom: 14 }}>
         Payout order is join order, fixed the moment the circle filled.
       </p>
-      <div className="scroll">
+      <div className="scroll" tabIndex={0} role="region" aria-label="Rotation table">
         <table>
           <thead>
             <tr>
-              <th>Seat</th><th>Member</th><th>This round</th>
-              <th>Deposit</th><th>Missed</th><th>Paid out</th>
+              <th scope="col">Seat</th>
+              <th scope="col">Member</th>
+              <th scope="col">This round</th>
+              <th scope="col">Deposit</th>
+              <th scope="col">Missed</th>
+              <th scope="col">Paid out</th>
             </tr>
           </thead>
           <tbody>
             {members.length === 0 && (
               <tr><td colSpan="6" className="sub">Nobody has joined yet.</td></tr>
             )}
-            {members.map((m, i) => (
-              <tr key={m.address}
-                className={`${m.address === wallet ? 'you' : ''} ${i === round - 1 && status === 'active' ? 'next' : ''}`}>
-                <td><span className="seatno">{i + 1}</span></td>
-                <td className="mono">
-                  {short(m.address)}{m.address === wallet && <span className="pill you" style={{ marginLeft: 8 }}>you</span>}
-                </td>
-                <td>{status !== 'active' ? <span className="dim">&mdash;</span>
-                  : m.paid ? <span className="pill paid">paid</span> : <span className="pill due">due</span>}</td>
-                <td>{m.rec ? (m.rec.delinquent ? <span className="pill bad">exhausted</span> : money(m.rec.deposit)) : '-'}</td>
-                <td>{m.rec ? Number(m.rec.defaults) : 0}</td>
-                <td>{m.rec?.received ? <span className="pill paid">yes</span> : <span className="dim">not yet</span>}</td>
-              </tr>
-            ))}
+            {members.map((m, i) => {
+              const isCurrentTurn = i === round - 1 && status === 'active';
+              return (
+                <tr
+                  key={m.address}
+                  className={`${m.address === wallet ? 'you' : ''} ${isCurrentTurn ? 'next' : ''}`}
+                >
+                  <th scope="row" className="seat-cell">
+                    <span className="seatno" aria-label={`Seat ${i + 1}${isCurrentTurn ? ', currently taking turn' : ''}`}>
+                      {i + 1}
+                    </span>
+                  </th>
+                  <td className="mono">
+                    {short(m.address)}
+                    {m.address === wallet && (
+                      <span className="pill you" style={{ marginLeft: 8 }} aria-label="You (connected wallet)">
+                        you
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    {status !== 'active' ? (
+                      <span className="dim" aria-label="Not applicable">&mdash;</span>
+                    ) : m.paid ? (
+                      <span className="pill paid" aria-label="Status: Contribution paid for this round">paid</span>
+                    ) : (
+                      <span className="pill due" aria-label="Status: Contribution due for this round">due</span>
+                    )}
+                  </td>
+                  <td>
+                    {m.rec ? (
+                      m.rec.delinquent ? (
+                        <span className="pill bad" aria-label="Deposit status: Exhausted from missed rounds">exhausted</span>
+                      ) : (
+                        money(m.rec.deposit)
+                      )
+                    ) : '-'}
+                  </td>
+                  <td>{m.rec ? Number(m.rec.defaults) : 0}</td>
+                  <td>
+                    {m.rec?.received ? (
+                      <span className="pill paid" aria-label="Paid out: Yes">yes</span>
+                    ) : (
+                      <span className="dim" aria-label="Paid out: Not yet">not yet</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
